@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -18,12 +18,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (role && profile.role !== role) {
-    return <Navigate to={profile.role === 'farmer' ? '/dashboard' : '/scanner'} replace />;
+  if (role && user.role !== role) {
+    return <Navigate to={user.role === 'farmer' ? '/dashboard' : '/scanner'} replace />;
   }
 
   return <>{children}</>;

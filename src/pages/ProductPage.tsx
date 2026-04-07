@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import { supabase, Product } from '../lib/supabase';
+import { api } from '../lib/api';
+import { Product } from '../types/product';
 import { ProductDetails } from '../components/ProductDetails';
 import { AlertCircle } from 'lucide-react';
 
@@ -18,21 +19,7 @@ export const ProductPage: React.FC = () => {
 
   const fetchProduct = async (id: string) => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          user_profiles (
-            id,
-            full_name,
-            farm_name,
-            role
-          )
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const data = await api.products.getById(id);
       setProduct(data);
     } catch (err: any) {
       setError('Product not found or no longer available.');

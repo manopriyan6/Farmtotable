@@ -1,10 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import { supabase, Product } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ProductForm } from '../../components/farmer/ProductForm';
 import { ProductCard } from '../../components/farmer/ProductCard';
 import { ProductDetails } from '../../components/ProductDetails';
+
+interface Product {
+  id: string;
+  farmer_id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  price: number;
+  prepared_date: string;
+  qr_code_url?: string;
+  created_at: string;
+  updated_at: string;
+  farmer_name?: string;
+  farm_name?: string;
+}
 
 export const ProductsPage: React.FC = () => {
   const { user } = useAuth();
@@ -38,22 +53,9 @@ export const ProductsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          user_profiles (
-            id,
-            full_name,
-            farm_name,
-            role
-          )
-        `)
-        .eq('farmer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
+      const data = await api.products.getAll();
+      const myProducts = data.filter((p: Product) => p.farmer_id === user.id);
+      setProducts(myProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -65,12 +67,7 @@ export const ProductsPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
+      await api.products.delete(productId);
       setProducts(products.filter(p => p.id !== productId));
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -104,7 +101,6 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold text-gray-900">My Products</h1>
         <button
@@ -116,7 +112,6 @@ export const ProductsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-gray-400" />
@@ -130,7 +125,6 @@ export const ProductsPage: React.FC = () => {
         />
       </div>
 
-      {/* Add Product Form */}
       {showAddForm && (
         <ProductForm
           onSuccess={() => {
@@ -141,7 +135,6 @@ export const ProductsPage: React.FC = () => {
         />
       )}
 
-      {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map((product) => (
@@ -162,7 +155,7 @@ export const ProductsPage: React.FC = () => {
             {searchTerm ? 'No products found' : 'No products yet'}
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            {searchTerm 
+            {searchTerm
               ? 'Try adjusting your search terms'
               : 'Get started by adding your first product.'
             }

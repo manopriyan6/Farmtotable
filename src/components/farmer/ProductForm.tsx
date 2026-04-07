@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, Calendar, DollarSign, Hash, FileText } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import QRCode from 'qrcode';
 
@@ -71,51 +71,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel })
     setError('');
 
     try {
-      console.log('Creating product for user:', user.id);
-      console.log('Form data:', formData);
-      
-      // Insert product with validation
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .insert([{
-          farmer_id: user.id,
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          quantity: parseInt(formData.quantity),
-          price: parseFloat(formData.price),
-          prepared_date: formData.prepared_date,
-        }])
-        .select()
-        .single();
+      const product = await api.products.create({
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        quantity: parseInt(formData.quantity),
+        price: parseFloat(formData.price),
+        prepared_date: formData.prepared_date,
+      });
 
-      if (productError) {
-        console.error('Product creation error:', productError);
-        throw productError;
-      }
-
-      console.log('Product created:', product);
-
-      // Generate QR code
       if (product?.id) {
         const qrCodeUrl = await generateQRCode(product.id);
 
-        // Update product with QR code URL if generated successfully
         if (qrCodeUrl) {
-          const { error: updateError } = await supabase
-            .from('products')
-            .update({ qr_code_url: qrCodeUrl })
-            .eq('id', product.id);
-
-          if (updateError) {
-            console.error('QR code update error:', updateError);
-            // Don't throw here, product was created successfully
-          }
+          await api.products.update(product.id, {
+            ...product,
+            qr_code_url: qrCodeUrl,
+          });
         }
       }
 
       onSuccess();
-      
-      // Reset form
+
       setFormData({
         name: '',
         description: '',
@@ -123,7 +99,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel })
         price: '',
         prepared_date: new Date().toISOString().split('T')[0],
       });
-      
+
     } catch (err: any) {
       console.error('Form submission error:', err);
       setError(err.message || 'An error occurred');
@@ -140,7 +116,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSuccess, onCancel })
           ✕
         </button>
       </div>
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="flex items-center text-sm font-medium text-gray-700 mb-2">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, DollarSign, Hash, QrCode, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Product } from '../../lib/supabase';
+import { Product } from '../../types/product';
 
 interface ProductCardProps {
   product: Product;

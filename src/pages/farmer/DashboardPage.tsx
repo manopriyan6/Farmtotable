@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Package, Plus, TrendingUp, DollarSign, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import { supabase, Product } from '../../lib/supabase';
+import { api } from '../../lib/api';
+import { Product } from '../../types/product';
 import { useAuth } from '../../contexts/AuthContext';
 import { ProductForm } from '../../components/farmer/ProductForm';
 import { ProductCard } from '../../components/farmer/ProductCard';
 import { ProductDetails } from '../../components/ProductDetails';
 
 export const DashboardPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -18,60 +19,17 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchProducts();
-      setupRealtimeSubscription();
     }
   }, [user]);
-
-  const setupRealtimeSubscription = () => {
-    if (!user) return;
-
-    const subscription = supabase
-      .channel('products_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'products',
-          filter: `farmer_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Real-time update:', payload);
-          fetchProducts(); // Refresh products on any change
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  };
 
   const fetchProducts = async () => {
     if (!user) return;
 
     try {
       setError('');
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          user_profiles (
-            id,
-            full_name,
-            farm_name,
-            role
-          )
-        `)
-        .eq('farmer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-      
-      setProducts(data || []);
+      const data = await api.products.getAll();
+      const myProducts = data.filter((p: Product) => p.farmer_id === user.id);
+      setProducts(myProducts);
     } catch (error: any) {
       console.error('Error fetching products:', error);
       setError('Failed to load products. Please refresh the page.');
@@ -85,14 +43,8 @@ export const DashboardPage: React.FC = () => {
 
     try {
       setError('');
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId)
-        .eq('farmer_id', user?.id); // Security: only allow deleting own products
+      await api.products.delete(productId);
 
-      if (error) throw error;
-      
       setProducts(products.filter(p => p.id !== productId));
       setSuccess('Product deleted successfully!');
       setTimeout(() => setSuccess(''), 3000);
@@ -172,10 +124,10 @@ export const DashboardPage: React.FC = () => {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {profile?.full_name}!
+            Welcome back, {user?.full_name}!
           </h1>
           <p className="text-gray-600 mt-1">
-            {profile?.farm_name ? `${profile.farm_name} Dashboard` : 'Farmer Dashboard'}
+            {user?.farm_name ? `${user.farm_name} Dashboard` : 'Farmer Dashboard'}
           </p>
           <p className="text-sm text-green-600 mt-2">
             ✨ Manage your products, generate QR codes, and connect with customers

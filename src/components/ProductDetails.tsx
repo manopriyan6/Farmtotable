@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, DollarSign, Hash, User, MapPin, Package } from 'lucide-react';
 import { format } from 'date-fns';
-import { Product } from '../lib/supabase';
+import { Product } from '../types/product';
 
 interface ProductDetailsProps {
   product: Product;
